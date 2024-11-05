@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>井字棋游戏</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #e6f7ff;
+            font-family: 'Microsoft YaHei', sans-serif;
+        }
+        #board {
+            display: grid;
+            grid-template-columns: repeat(3, 120px);
+            grid-template-rows: repeat(3, 120px);
+            gap: 10px;
+        }
+        .cell {
+            width: 120px;
+            height: 120px;
+            background-color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3em;
+            cursor: pointer;
+            border: 3px solid #1890ff;
+            position: relative;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s;
+        }
+        .cell.taken {
+            cursor: not-allowed;
+        }
+        .cell.winning {
+            background-color: #90ee90;
+        }
+        .cell.losing {
+            background-color: #ff4d4f;
+        }
+        .cell .marker {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 1em;
+            color: #b3b3b3;
+        }
+        #message {
+            margin-top: 20px;
+            font-size: 1.8em;
+            color: #333;
+            text-align: center;
+        }
+        #steps {
+            margin-top: 10px;
+            font-size: 1.5em;
+            color: #666;
+            text-align: center;
+        }
+        #controls {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        select, input[type="checkbox"] {
+            font-size: 1em;
+            padding: 5px;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div id="controls">
+            <label for="mode">选择游戏模式: </label>
+            <select id="mode">
+                <option value="1">模式 1: 传统井字棋</option>
+                <option value="2">模式 2: 任意三个连线获胜</option>
+                <option value="3">模式 3: 任意三个连线失败</option>
+                <option value="4">模式 4: 带编号的自定义井字棋</option>
+            </select>
+            <br><br>
+            <label for="customNumbers" id="customNumbersLabel" style="display: none;">
+                <input type="checkbox" id="customNumbers"> 自定义编号
+            </label>
+        </div>
+        <div id="board"></div>
+        <div id="message"></div>
+        <div id="steps"></div>
+    </div>
+    <script>
+        const board = document.getElementById('board');
+        const message = document.getElementById('message');
+        const steps = document.getElementById('steps');
+        const modeSelect = document.getElementById('mode');
+        const customNumbersCheckbox = document.getElementById('customNumbers');
+        const customNumbersLabel = document.getElementById('customNumbersLabel');
+        let currentPlayer = 'X';
+        let gameBoard = ['', '', '', '', '', '', '', '', ''];
+        let xSteps = 0;
+        let oSteps = 0;
+        let customNumber = 1;
+        let customNumberingComplete = false;
+
+        function updateSteps() {
+            steps.textContent = `X 步数: ${xSteps}, O 步数: ${oSteps}`;
+        }
+
+        function checkWinner() {
+            const winningCombinations = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8],
+                [0, 3, 6], [1, 4, 7], [2, 5, 8],
+                [0, 4, 8], [2, 4, 6]
+            ];
+            for (const combination of winningCombinations) {
+                const [a, b, c] = combination;
+                if (modeSelect.value === '1') {
+                    if (gameBoard[a] && gameBoard[a] === gameBoard[b] && gameBoard[a] === gameBoard[c]) {
+                        return { winner: gameBoard[a], combination: combination };
+                    }
+                } else if (modeSelect.value === '2') {
+                    if (gameBoard[a] && gameBoard[b] && gameBoard[c]) {
+                        return { winner: '任意', combination: combination };
+                    }
+                } else if (modeSelect.value === '3' || modeSelect.value === '4') {
+                    if (gameBoard[a] && gameBoard[b] && gameBoard[c]) {
+                        return { loser: '任意', combination: combination };
+                    }
+                }
+            }
+            if (!gameBoard.includes('')) {
+                return { winner: '平局' };
+            }
+            return null;
+        }
+
+        function handleClick(event) {
+            const cell = event.target;
+            const index = cell.dataset.index;
+
+            if (modeSelect.value === '4' && customNumbersCheckbox.checked && !customNumberingComplete) {
+                if (cell.querySelector('.marker') === null) {
+                    if (cell.classList.contains('taken')) {
+                        alert('请选择空白方格');
+                        return;
+                    }
+                    const numberMarker = document.createElement('div');
+                    numberMarker.classList.add('marker');
+                    numberMarker.textContent = customNumber;
+                    numberMarker.style.color = '#b3b3b3';
+                    cell.appendChild(numberMarker);
+                    cell.classList.add('taken');
+                    cell.dataset.customNumber = customNumber;
+                    customNumber++;
+                    if (customNumber > 9) {
+                        customNumbersCheckbox.checked = false;
+                        customNumberingComplete = true;
+                        message.textContent = `自定义编号完成！轮到玩家 ${currentPlayer}`;
+                    }
+                } else {
+                    alert('请选择空白方格');
+                }
+                return;
+            }
+
+            if (gameBoard[index] !== '' || (modeSelect.value === '4' && customNumbersCheckbox.checked && !customNumberingComplete)) return;
+            gameBoard[index] = currentPlayer;
+            const marker = document.createElement('div');
+            marker.classList.add('marker');
+            marker.textContent = currentPlayer;
+            marker.style.fontSize = '1.5em';
+            marker.style.color = '#000';
+            marker.style.position = 'static';
+            cell.appendChild(marker);
+            cell.classList.add('taken');
+
+            if (currentPlayer === 'X') {
+                xSteps++;
+            } else {
+                oSteps++;
+            }
+
+            updateSteps();
+
+            const result = checkWinner();
+            if (result) {
+                if (result.winner === '平局') {
+                    message.textContent = '平局！';
+                } else if (result.winner === '任意') {
+                    message.textContent = '三连线！游戏结束！';
+                    result.combination.forEach(i => {
+                        document.querySelector(`[data-index="${i}"]`).classList.add('winning');
+                    });
+                } else if (result.loser === '任意') {
+                    message.textContent = `三连线！你输了！`;
+                    result.combination.forEach(i => {
+                        document.querySelector(`[data-index="${i}"]`).classList.add('losing');
+                    });
+                } else {
+                    message.textContent = `${result.winner} 获胜！`;
+                    result.combination.forEach(i => {
+                        document.querySelector(`[data-index="${i}"]`).classList.add('winning');
+                    });
+                }
+                board.removeEventListener('click', handleClick);
+            } else {
+                currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+                message.textContent = `轮到玩家 ${currentPlayer}`;
+            }
+        }
+
+        function initializeBoard() {
+            board.innerHTML = '';
+            gameBoard = ['', '', '', '', '', '', '', '', ''];
+            currentPlayer = 'X';
+            xSteps = 0;
+            oSteps = 0;
+            customNumber = 1;
+            customNumberingComplete = false;
+            message.textContent = `轮到玩家 ${currentPlayer}`;
+            updateSteps();
+
+            for (let i = 0; i < 9; i++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                cell.dataset.index = i;
+                if (modeSelect.value === '4' && !customNumbersCheckbox.checked) {
+                    const numberMarker = document.createElement('div');
+                    numberMarker.classList.add('marker');
+                    numberMarker.textContent = i + 1;
+                    numberMarker.style.color = '#b3b3b3';
+                    cell.appendChild(numberMarker);
+                }
+                board.appendChild(cell);
+            }
+
+            board.addEventListener('click', handleClick);
+        }
+
+        modeSelect.addEventListener('change', () => {
+            if (modeSelect.value === '4') {
+                customNumbersLabel.style.display = 'block';
+            } else {
+                customNumbersLabel.style.display = 'none';
+                customNumbersCheckbox.checked = false;
+            }
+            initializeBoard();
+        });
+
+        customNumbersCheckbox.addEventListener('change', () => {
+            if (customNumbersCheckbox.checked) {
+                initializeBoard();
+            }
+        });
+
+        initializeBoard();
+    </script>
+</body>
+</html>
